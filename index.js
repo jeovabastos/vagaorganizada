@@ -23,7 +23,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
-const YOUR_DOMAIN = 'http://127.0.0.1:5500';
+const YOUR_DOMAIN = 'http://127.0.0.1:5500/rhorganizado';
 
 app.post('/create-checkout-session', async (req, res) => {
   const session = await stripe.checkout.sessions.create({
