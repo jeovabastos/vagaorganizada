@@ -5,7 +5,7 @@ import express from 'express';
 import multer from 'multer';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
-
+import Stripe from 'stripe';
 
 dotenv.config()
 
@@ -20,7 +20,8 @@ const upload = multer({ storage: multer.memoryStorage() });
 // Inicializações
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 const resend = new Resend(process.env.RESEND_API_KEY);
-const stripe = require('stripe')(process.env.STRIPE_PUBLIC_KEY);
+
+Stripe(process.env.STRIPE_PUBLIC_KEY)
 
 const YOUR_DOMAIN = 'http://127.0.0.1:5500';
 
