@@ -21,7 +21,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-Stripe(process.env.STRIPE_PUBLIC_KEY)
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
 const YOUR_DOMAIN = 'http://127.0.0.1:5500';
 
