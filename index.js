@@ -57,7 +57,7 @@ app.post('/create-checkout-session', async (req, res) => {
 
 
 
-app.post('/api/upload', upload.single('curriculo'), async (req, res) => {
+app.post('/upload', upload.single('curriculo'), async (req, res) => {
   try {
     const file = req.file;
     const { nome, sobrenome, emailRecrutador } = req.body;
