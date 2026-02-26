@@ -23,7 +23,14 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
-const YOUR_DOMAIN = 'http://127.0.0.1:5500/rhorganizado';
+// trocar isso aqui pelo link do frontend oficial
+// const YOUR_DOMAIN = 'http://127.0.0.1:5500/rhorganizado';
+const YOUR_DOMAIN = 'https://vagaorganizadafrontend.vercel.app/'
+
+
+
+
+
 
 app.post('/create-checkout-session', async (req, res) => {
   const session = await stripe.checkout.sessions.create({
@@ -40,6 +47,13 @@ app.post('/create-checkout-session', async (req, res) => {
 
   res.redirect(303, session.url);
 });
+
+// fazer um post para o recrutador cadastrar vaga vindo da página de success.html
+
+
+
+
+
 
 app.post('/api/upload', upload.single('curriculo'), async (req, res) => {
   try {
