@@ -11,7 +11,9 @@ dotenv.config()
 
 const app = express();
 app.use(cors({
-  origin: 'https://vagaorganizadafrontend.vercel.app/'
+  origin: 'https://vagaorganizadafrontend.vercel.app',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }))
 app.use(express.static('public'));
 
