@@ -1,4 +1,3 @@
-// api/index.js
 import cors from 'cors'
 import dotenv from 'dotenv'
 import express from 'express';
@@ -7,56 +6,104 @@ import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import Stripe from 'stripe';
 
+// Inicializações com excessão do "app.use(express.json())"
 dotenv.config()
-
 const app = express();
 app.use(cors({
-  origin: 'https://vagaorganizadafrontend.vercel.app',
+  origin: 'https://vagaorganizadafrontendvite.vercel.app',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }))
 app.use(express.static('public'));
-
 const upload = multer({ storage: multer.memoryStorage() });
-
-// Inicializações
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABE_KEY);
+const supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 const resend = new Resend(process.env.RESEND_API_KEY);
-
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
-
-// trocar isso aqui pelo link do frontend oficial
-// const YOUR_DOMAIN = 'http://127.0.0.1:5500/rhorganizado';
-const YOUR_DOMAIN = 'https://vagaorganizadafrontend.vercel.app/'
+const FRONTEND_DOMAIN = 'https://vagaorganizadafrontendvite.vercel.app'
 
 
 
+// A rota do Webhook precisa do corpo bruto para validar a assinatura do Stripe
+app.post('/webhook', express.raw({type: 'application/json'}), async (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    let event;
+
+    try {
+        // O STRIPE_WEBHOOK_SECRET você pega no painel do Stripe
+        event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    } catch (err) {
+        return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    // Quando o pagamento é concluído com sucesso
+    if (event.type === 'checkout.session.completed') {
+        const session = event.data.object;
+        const userId = session.client_reference_id; // O ID que você enviou no checkout!
+
+        // Aqui você usa a SERVICE_ROLE_KEY para atualizar o banco sem restrições de RLS
+        const { error } = await supabaseAdmin
+            .from('perfis')
+            .update({ plano_ativo: true })
+            .eq('id', userId);
+
+        if (error) console.error("Erro ao ativar plano:", error);
+    }
+
+    res.json({ received: true });
+});
+app.use(express.json())
 
 
 
+
+// rota para cadastrar recrutador e fazer o checkout
 app.post('/create-checkout-session', async (req, res) => {
-  const session = await stripe.checkout.sessions.create({
-    line_items: [
-      {
-        // Provide the exact Price ID (for example, price_1234) of the product you want to sell
-        price: 'price_1T4kdrEakH8NLS3DI6nhoJCO',
-        quantity: 1,
-      },
-    ],
-    mode: 'payment',
-    success_url: `${YOUR_DOMAIN}/success.html`,
-  });
+  try {
+    // Extraímos os dados que o frontend enviou no corpo (body) da requisição
+    const { email, password } = req.body;
 
-  res.redirect(303, session.url);
+    // 1. Criar recrutador no Supabase
+    const { data, error } = await supabase.auth.signUp({
+      email: email,
+      password: password,
+      options: {
+        data: {
+          email: email,
+          plano_ativo: false
+        },
+      },
+    })
+    if (error) throw error;
+
+    // 2. Criar Sessão no Stripe
+    const session = await stripe.checkout.sessions.create({
+      customer_email: email, 
+      client_reference_id: data.user.id, 
+      payment_method_types: ['card'],
+      line_items: [{ price: 'price_1T4kdrEakH8NLS3DI6nhoJCO', quantity: 1 }],
+      mode: 'payment',
+      success_url: `${FRONTEND_DOMAIN}/success`,
+    });
+    res.json({ url: session.url });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 });
 
-// fazer um post para o recrutador cadastrar vaga vindo da página de success.html
+
+
+// rota para recrutador cadastrar vaga vindo da página de success.html
 
 
 
 
 
 
+
+
+// REFAZER PARA QUE A O ID DA VAGA CERTA SEJA USADA AQUI
+// rota para candidato enviar curriculo 
 app.post('/upload', upload.single('curriculo'), async (req, res) => {
   try {
     const file = req.file;
@@ -79,7 +126,8 @@ app.post('/upload', upload.single('curriculo'), async (req, res) => {
     // Como o arquivo já está em 'file.buffer' (graças ao Multer), 
     // não precisamos nem baixar do Supabase agora! Usamos o que já temos na memória.
     await resend.emails.send({
-      from: 'onboarding@resend.dev' || 'mail.vagaorganizada.com', // Ou seu domínio verificado
+      // from: 'onboarding@resend.dev' || 'mail.vagaorganizada.com', // Ou seu domínio verificado
+      from: 'onboarding@mail.vagaorganizada.com',
       to: emailRecrutador || 'jbastos.im@gmail.com',
       subject: `Novo Currículo: ${file.originalname}`,
       html: `
